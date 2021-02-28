@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useState } from 'react';
+import { createContext, ReactNode, useEffect, useState } from 'react';
 import challenges from '../../challenges.json'
 
 interface Challenge {
@@ -9,14 +9,15 @@ interface Challenge {
 
 interface ChallengesContextData {
     level: number;
-    levelUp:() => void;
-    currentExperience:number;
+    levelUp: () => void;
+    currentExperience: number;
     challengesCompleted: number;
     startNewChallenge: () => void;
     activeChallenge: Challenge;
     resetChallenge: () => void;
     experienceNextLevel: number;
-    
+    completeChallenge: () => void;
+
 }
 
 interface ChallengesProviderProps {
@@ -25,41 +26,73 @@ interface ChallengesProviderProps {
 
 export const ChallengesContext = createContext({} as ChallengesContextData);
 
-export function ChallengesProvider ({ children } : ChallengesProviderProps) {
-    const [level,setLevel] = useState(1);
-    const [currentExperience,setCurrentExperience] = useState(0);
-    const [challengesCompleted,setChallengesCompleted] = useState(0);
-    const [activeChallenge,setActiveChallenge] = useState(null);
-    
+export function ChallengesProvider({ children }: ChallengesProviderProps) {
+    const [level, setLevel] = useState(1);
+    const [currentExperience, setCurrentExperience] = useState(0);
+    const [challengesCompleted, setChallengesCompleted] = useState(0);
+    const [activeChallenge, setActiveChallenge] = useState(null);
+
     const experienceNextLevel = Math.pow((level + 1) * 4, 2);
 
-    function levelUp(){
-      setLevel(level + 1);
-    
-}
+    useEffect(() => {
+        Notification.requestPermission();
+    }, []);
 
-    function startNewChallenge () {
+    function levelUp() {
+        setLevel(level + 1);
+
+    }
+
+    function startNewChallenge() {
         const randomChallengeIndex = Math.floor(Math.random() * challenges.length);
         const challenge = challenges[randomChallengeIndex];
 
         setActiveChallenge(challenge);
+
+
+        if (Notification.permission === 'granted') {
+            new Notification('Novo desafio 🎉', {
+                body: `Valendo ${challenge.amount}xp`
+            })
+
+        }
     }
 
-    function resetChallenge () {
+    function resetChallenge() {
         setActiveChallenge(null);
     }
 
+    function completeChallenge() {
+        if (!activeChallenge) {
+            return;
+        }
+
+        const { amount } = activeChallenge;
+
+        let finalExperience = currentExperience + amount;
+
+        if (finalExperience >= experienceNextLevel) {
+            finalExperience = finalExperience - experienceNextLevel;
+            levelUp();
+        }
+
+        setCurrentExperience(finalExperience);
+        setActiveChallenge(null);
+        setChallengesCompleted(challengesCompleted + 1);
+    }
+
     return (
-        <ChallengesContext.Provider 
-        value={{ 
-            level, 
-            levelUp,
-            currentExperience,
-            challengesCompleted,
-            startNewChallenge,
-            activeChallenge,
-            resetChallenge,
-            experienceNextLevel,
+        <ChallengesContext.Provider
+            value={{
+                level,
+                levelUp,
+                currentExperience,
+                challengesCompleted,
+                startNewChallenge,
+                activeChallenge,
+                resetChallenge,
+                experienceNextLevel,
+                completeChallenge,
             }}
         >
             {children}
